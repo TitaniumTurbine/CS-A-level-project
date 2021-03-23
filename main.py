@@ -127,17 +127,6 @@ class level:
         self.playerProjectiles = []
         self.enemyProjectiles = []
 
-        self.grid = []
-        for i in range(0, 16):
-            for j in range(0, 9):
-                self.grid.append([(800/16) * i * widthScale, (450/9) * j * heightScale, False, False])
-        print(len(self.grid))
-        for obstacle in self.obstacles:
-            for square in self.grid:
-                if (obstacle.type == "hazard" and obstacle.isSolid == True) or (obstacle.type != "hazard"):
-                    if obstacle.x < square[0] + 50 * widthScale and obstacle.x + obstacle.width > square[0] and obstacle.y < square[1] + 50 * heightScale and obstacle.y + obstacle.height> square[1]:
-                        square[2] = True
-
     def addEnemy(self, enemy):
         num = 0
         for i in range(0, len(self.activeEnemies)):
@@ -173,32 +162,6 @@ class level:
                     num += 1
         if num == 0:
             self.playerProjectiles.append(projectile)
-
-    def getAdjacentSquares(self, square):
-        adjacentSquares = []
-        for i in range(0,len(self.grid)):
-            if self.grid[i] == square:
-                if i-1 > 0 and i-1 < len(self.grid) and self.grid[i-1][2] == False:
-                    upSquare = self.grid[i-1]
-                    adjacentSquares.append(upSquare)
-                else:
-                    upSquare = None
-                if i+1 > 0 and i+1 < len(self.grid) and self.grid[i+1][2] == False:
-                    downSquare = self.grid[i+1]
-                    adjacentSquares.append(downSquare)
-                else:
-                    downSquare = None
-                if i+9 > 0 and i+9 < len(self.grid) and self.grid[i+9][2] == False:
-                    rightSquare = self.grid[i+9]
-                    adjacentSquares.append(rightSquare)
-                else:
-                    rightSquare = None
-                if i-9 > 0 and i-9 < len(self.grid) and self.grid[i-9][2] == False:
-                    leftSquare = self.grid[i-9]
-                    adjacentSquares.append(leftSquare)
-                else:
-                    leftSquare = None
-        return adjacentSquares
 
 
 #entity, an object which can move around the screen
@@ -238,54 +201,6 @@ class entity:
 
     def setY(self, newY):
         self.y = newY
-
-    def getCurrentSquare(self):
-        squareCoords = [50*widthScale * (self.x // (50*widthScale)), 50*heightScale * (self.y // (50*heightScale))]
-        i = squareCoords[0] / widthScale / (800/16)
-        j = squareCoords[1] / heightScale / (450/9)
-        if i*9 + j <= 144:
-            currentSquare = world.grid[int(i*9+j)]
-            return currentSquare
-
-    def pathFind(self, start, dest):
-        global endSquare
-        if start == self.getCurrentSquare():
-            self.path = []
-            self.checked = []
-            self.toCheck = []
-            self.totalDist = 0
-
-        self.checked.append([start, self.totalDist])
-        self.totalDist += 1
-        print(self.totalDist)
-        adjacentSquares = world.getAdjacentSquares(start)
-        for item in self.checked:
-            for square in adjacentSquares:
-                if square == item[0]:
-                    adjacentSquares.remove(square)
-        for item in self.toCheck:
-            for square in adjacentSquares:
-                if square == item[0]:
-                    adjacentSquares.remove(square)
-        if len(adjacentSquares) > 0:
-            for square in adjacentSquares:
-                self.toCheck.append(square)
-                self.pathFind(square, dest)
-        else:
-            while self.totalDist >= 0:
-                self.path.append(self.checked[-1][0])
-                self.totalDist -= 1
-            self.setX(self.path[0][0])
-            self.setY(self.path[0][1])
-
-        
-        
-
-    def gotoSquare(self, square):
-        self.dirVect = [(square[0] + 25*widthScale - self.x) / math.sqrt((square[0] + 25*widthScale - self.x)**2 + (square[1] + 25*heightScale - self.y)**2), (square[1] + 25*heightScale - self.y) / math.sqrt((square[0] + 25*widthScale - self.x)**2 + (square[1] + 25*heightScale - self.y)**2)]
-        while self.getCurrentSquare != square:
-            self.moveRight(widthScale * self.dirVect[0] * self.speed)
-            self.moveDown(heightScale * self.dirVect[1] * self.speed)
 
 #entity which the player controls
 class playerChr(entity):
@@ -914,18 +829,10 @@ def game():
     currentMenu = "game"
     #drawTitle("Level " + str(levelNumber))
 
-    playerSquare = player.getCurrentSquare()
-
     #go through all obstacles and perform required actions such as displaying them or running their collide check procedure
     for i in range(0, len(world.obstacles)):
         pygame.draw.rect(window,world.obstacles[i].colour,pygame.Rect(world.obstacles[i].x,world.obstacles[i].y,world.obstacles[i].width,world.obstacles[i].height))
         world.obstacles[i].collideCheck(player)
-
-        for square in world.grid:
-            if (world.obstacles[i].type == "breakableWall" and world.obstacles[i].health <= 0):
-                if world.obstacles[i].x < square[0] + 50 * widthScale and world.obstacles[i].x + world.obstacles[i].width > square[0] and world.obstacles[i].y < square[1] + 50 * heightScale and world.obstacles[i].y + world.obstacles[i].height> square[1]:
-                    square[2] = False
-        
 
         for j in range(0, len(world.playerProjectiles)):
             #check if player attack collides with obstacle
@@ -1045,7 +952,6 @@ def game():
 
 
         #give enemies random chance to change direction to one of 4 different directions
-        '''
         choice = randint(0,150)
         if choice == 0:
             world.activeEnemies[i].direction = 1
@@ -1065,7 +971,6 @@ def game():
                 world.activeEnemies[i].moveLeft(widthScale * world.activeEnemies[i].speed)
             elif world.activeEnemies[i].direction == 4:
                 world.activeEnemies[i].moveRight(widthScale * world.activeEnemies[i].speed)
-        '''
 
 
         #make enemies shoot
@@ -1079,7 +984,6 @@ def game():
 
             #prevent enemies from moving off the screen
             gameBoundary(world.activeEnemies[i], 0)
-            world.activeEnemies[i].pathFind(world.activeEnemies[i].getCurrentSquare(), player.getCurrentSquare())
 
     #draw the enemies' attack projectiles and make them move
     for j in range(0, len(world.enemyProjectiles)):
@@ -1126,28 +1030,6 @@ def game():
 
     #prevent the player from moving off the screen
     gameBoundary(player,0)
-
-    drawGrid = True
-
-    endSquare = None
-
-    for square in world.grid:
-        if drawGrid == True:
-            if square[3] == True:
-                pygame.draw.rect(window, (0,255,0), pygame.Rect(square[0], square[1], 10, 10))
-            elif square[2] == True:
-                pygame.draw.rect(window, (255,0,0), pygame.Rect(square[0], square[1], 3, 3))
-            else:
-                pygame.draw.rect(window, (255,255,255), pygame.Rect(square[0], square[1], 3, 3))
-            if square == endSquare:
-                pygame.draw.rect(window, (255,0,255), pygame.Rect(square[0], square[1], 5, 5))
-        if square == playerSquare:
-            square[3] = True
-        else:
-            square[3] = False
-
-    
-
 
 #prevent an entity from moving a certain number of pixels away from the screen edge
 def gameBoundary(ent, size):
