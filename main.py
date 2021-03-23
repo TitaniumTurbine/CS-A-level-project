@@ -175,26 +175,30 @@ class level:
             self.playerProjectiles.append(projectile)
 
     def getAdjacentSquares(self, square):
-        for i in range(0,len(world.grid)):
+        adjacentSquares = []
+        for i in range(0,len(self.grid)):
             if self.grid[i] == square:
                 if i-1 > 0 and i-1 < len(self.grid) and self.grid[i-1][2] == False:
                     upSquare = self.grid[i-1]
+                    adjacentSquares.append(upSquare)
                 else:
                     upSquare = None
                 if i+1 > 0 and i+1 < len(self.grid) and self.grid[i+1][2] == False:
                     downSquare = self.grid[i+1]
+                    adjacentSquares.append(downSquare)
                 else:
                     downSquare = None
                 if i+9 > 0 and i+9 < len(self.grid) and self.grid[i+9][2] == False:
                     rightSquare = self.grid[i+9]
+                    adjacentSquares.append(rightSquare)
                 else:
                     rightSquare = None
                 if i-9 > 0 and i-9 < len(self.grid) and self.grid[i-9][2] == False:
                     leftSquare = self.grid[i-9]
+                    adjacentSquares.append(leftSquare)
                 else:
                     leftSquare = None
-        return [upSquare,downSquare,leftSquare,rightSquare]
-
+        return adjacentSquares
 
 
 #entity, an object which can move around the screen
@@ -244,48 +248,44 @@ class entity:
             return currentSquare
 
     def pathFind(self, start, dest):
+        global endSquare
         if start == self.getCurrentSquare():
             self.path = []
-            self.checked = [[start,0]]
+            self.checked = []
             self.toCheck = []
-        print(start)
+            self.totalDist = 0
+
+        self.checked.append([start, self.totalDist])
+        self.totalDist += 1
+        print(self.totalDist)
         adjacentSquares = world.getAdjacentSquares(start)
-        #print(adjacentSquares)
-        #print(self.toCheck)
-        for square in adjacentSquares:
-            squareDist = [square, self.checked[-1][1] + 1]
-            self.toCheck.append(squareDist)
-        for square in self.toCheck:
-            if square == self.toCheck[0]:
-                smallestDist = square[1]
-                closestSquare = square
-            elif square[1] < smallestDist:
-                smallestDist = square[1]
-                closestSquare = square
-        for square in self.toCheck:
-            if square == closestSquare:
-                self.checked.append(square)
-                self.toCheck.remove(square)
-        #print(self.checked)
-        if self.checked[-1][0] != dest:
-            self.pathFind(self.checked[-1][0], dest)
+        for item in self.checked:
+            for square in adjacentSquares:
+                if square == item[0]:
+                    adjacentSquares.remove(square)
+        for item in self.toCheck:
+            for square in adjacentSquares:
+                if square == item[0]:
+                    adjacentSquares.remove(square)
+        if len(adjacentSquares) > 0:
+            for square in adjacentSquares:
+                self.toCheck.append(square)
+                self.pathFind(square, dest)
         else:
-            totalDist = self.checked[-1][1]
-            while totalDist >= 0:
-                for square in self.checked:
-                    if square[1] == totalDist:
-                        self.path.append(square[0])
-                        self.checked.remove(square)
-                        totalDist -= 1
-            #print(self.path)
-            for square in self.path:
-                self.gotoSquare(square)
+            while self.totalDist >= 0:
+                self.path.append(self.checked[-1][0])
+                self.totalDist -= 1
+            self.setX(self.path[0][0])
+            self.setY(self.path[0][1])
+
+        
+        
 
     def gotoSquare(self, square):
         self.dirVect = [(square[0] + 25*widthScale - self.x) / math.sqrt((square[0] + 25*widthScale - self.x)**2 + (square[1] + 25*heightScale - self.y)**2), (square[1] + 25*heightScale - self.y) / math.sqrt((square[0] + 25*widthScale - self.x)**2 + (square[1] + 25*heightScale - self.y)**2)]
         while self.getCurrentSquare != square:
-            moveRight(widthScale * self.dirVect[0] * self.speed)
-            moveDown(heightScale * self.dirVect[1] * self.speed)
+            self.moveRight(widthScale * self.dirVect[0] * self.speed)
+            self.moveDown(heightScale * self.dirVect[1] * self.speed)
 
 #entity which the player controls
 class playerChr(entity):
@@ -1066,8 +1066,6 @@ def game():
             elif world.activeEnemies[i].direction == 4:
                 world.activeEnemies[i].moveRight(widthScale * world.activeEnemies[i].speed)
         '''
-        if world.activeEnemies[i].type != "none":
-            world.activeEnemies[i].pathFind(world.activeEnemies[i].getCurrentSquare(), player.getCurrentSquare())
 
 
         #make enemies shoot
@@ -1081,6 +1079,7 @@ def game():
 
             #prevent enemies from moving off the screen
             gameBoundary(world.activeEnemies[i], 0)
+            world.activeEnemies[i].pathFind(world.activeEnemies[i].getCurrentSquare(), player.getCurrentSquare())
 
     #draw the enemies' attack projectiles and make them move
     for j in range(0, len(world.enemyProjectiles)):
@@ -1130,6 +1129,8 @@ def game():
 
     drawGrid = True
 
+    endSquare = None
+
     for square in world.grid:
         if drawGrid == True:
             if square[3] == True:
@@ -1138,6 +1139,8 @@ def game():
                 pygame.draw.rect(window, (255,0,0), pygame.Rect(square[0], square[1], 3, 3))
             else:
                 pygame.draw.rect(window, (255,255,255), pygame.Rect(square[0], square[1], 3, 3))
+            if square == endSquare:
+                pygame.draw.rect(window, (255,0,255), pygame.Rect(square[0], square[1], 5, 5))
         if square == playerSquare:
             square[3] = True
         else:
